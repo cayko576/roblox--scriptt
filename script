@@ -1,6 +1,6 @@
 -- =========================================
--- VIP EGG HUNTER (V19.0 - 0MS LATENCY & LINE ESP)
--- Tối ưu hóa cực hạn, Chế độ về Base, Line ESP
+-- VIP EGG HUNTER (V21.0 - GOD SPEED / INSTANT EVENT)
+-- Bắt sự kiện ngay khi trứng sinh ra, Teleport + Nhặt tức thì 0ms
 -- =========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,7 +18,7 @@ local CurrentStatus = "Khởi động..."
 -- =========================================
 -- HỆ THỐNG LƯU TRỮ (SETTINGS)
 -- =========================================
-local ConfigFile = "VIP_Egg_Kaitun_Config_V8.json"
+local ConfigFile = "VIP_Egg_Kaitun_Config_V9.json"
 
 local Settings = {
     AutoFarm = false, 
@@ -47,7 +47,7 @@ end
 LoadSettings()
 
 -- =========================================
--- LÕI DỮ LIỆU
+-- LÕI DỮ LIỆU & UI BỊ ẨN (Để code gọn, UI vẫn giữ nguyên cấu trúc cũ)
 -- =========================================
 local CustomBasePos = nil
 local PriorityOrder = {"Volcanic Egg", "Cherub Egg", "Solaris Egg", "Blackhole Egg"}
@@ -59,18 +59,8 @@ local TargetEggs = {
 }
 local ESP_Cache = {}
 
-local function IsEggValid(obj)
-    if not obj or not obj.Parent or not obj:IsDescendantOf(Workspace) then return false end
-    local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
-    if prompt and not prompt.Enabled then return false end
-    return true
-end
-
--- =========================================
--- THIẾT KẾ UI 
--- =========================================
 local UI = Instance.new("ScreenGui")
-UI.Name = "Kaitun_Egg_UI_V8"
+UI.Name = "Kaitun_Egg_UI_V9"
 UI.ResetOnSpawn = false
 if CoreGui:FindFirstChild(UI.Name) then CoreGui[UI.Name]:Destroy() end
 UI.Parent = CoreGui
@@ -120,287 +110,75 @@ MakeDraggable(ToggleMenuBtn)
 local TitleFrame = Instance.new("Frame", MainFrame)
 TitleFrame.Size = UDim2.new(1, 0, 0, 40)
 TitleFrame.BackgroundTransparency = 1
-
 local TitleLbl = Instance.new("TextLabel", TitleFrame)
-TitleLbl.Size = UDim2.new(0.4, 0, 1, 0)
-TitleLbl.Position = UDim2.new(0, 15, 0, 0)
-TitleLbl.BackgroundTransparency = 1
-TitleLbl.Text = "🥚 KAITUN V19.0 (0MS LATENCY)"
-TitleLbl.TextColor3 = Color3.new(1,1,1)
-TitleLbl.Font = Enum.Font.GothamBold
-TitleLbl.TextSize = 13
-TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
-
+TitleLbl.Size = UDim2.new(0.5, 0, 1, 0); TitleLbl.Position = UDim2.new(0, 15, 0, 0); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = "🥚 KAITUN V21.0 (GOD SPEED)"; TitleLbl.TextColor3 = Color3.new(1,1,1); TitleLbl.Font = Enum.Font.GothamBold; TitleLbl.TextSize = 13; TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
 local StatusLbl = Instance.new("TextLabel", TitleFrame)
-StatusLbl.Size = UDim2.new(0.6, -15, 1, 0)
-StatusLbl.Position = UDim2.new(0.4, 0, 0, 0)
-StatusLbl.BackgroundTransparency = 1
-StatusLbl.Text = "Đang nhàn rỗi..."
-StatusLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-StatusLbl.Font = Enum.Font.GothamSemibold
-StatusLbl.TextSize = 12
-StatusLbl.TextXAlignment = Enum.TextXAlignment.Right
-
-local Separator = Instance.new("Frame", MainFrame)
-Separator.Size = UDim2.new(1, -30, 0, 1)
-Separator.Position = UDim2.new(0, 15, 0, 40)
-Separator.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-Separator.BorderSizePixel = 0
-
-local ScrollFrame = Instance.new("ScrollingFrame", MainFrame)
-ScrollFrame.Size = UDim2.new(1, -20, 1, -55)
-ScrollFrame.Position = UDim2.new(0, 10, 0, 45)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 4
-ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
-
-local UIGrid = Instance.new("UIGridLayout", ScrollFrame)
-UIGrid.CellSize = UDim2.new(0.315, 0, 0, 35)
-UIGrid.CellPadding = UDim2.new(0, 8, 0, 8)
-UIGrid.SortOrder = Enum.SortOrder.LayoutOrder
+StatusLbl.Size = UDim2.new(0.5, -15, 1, 0); StatusLbl.Position = UDim2.new(0.5, 0, 0, 0); StatusLbl.BackgroundTransparency = 1; StatusLbl.Text = "Đang nhàn rỗi..."; StatusLbl.TextColor3 = Color3.fromRGB(100, 255, 100); StatusLbl.Font = Enum.Font.GothamSemibold; StatusLbl.TextSize = 12; StatusLbl.TextXAlignment = Enum.TextXAlignment.Right
+local Separator = Instance.new("Frame", MainFrame); Separator.Size = UDim2.new(1, -30, 0, 1); Separator.Position = UDim2.new(0, 15, 0, 40); Separator.BackgroundColor3 = Color3.fromRGB(50, 50, 60); Separator.BorderSizePixel = 0
+local ScrollFrame = Instance.new("ScrollingFrame", MainFrame); ScrollFrame.Size = UDim2.new(1, -20, 1, -55); ScrollFrame.Position = UDim2.new(0, 10, 0, 45); ScrollFrame.BackgroundTransparency = 1; ScrollFrame.ScrollBarThickness = 4; ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
+local UIGrid = Instance.new("UIGridLayout", ScrollFrame); UIGrid.CellSize = UDim2.new(0.315, 0, 0, 35); UIGrid.CellPadding = UDim2.new(0, 8, 0, 8); UIGrid.SortOrder = Enum.SortOrder.LayoutOrder
 
 local function CreateToggle(text, defaultState, callback)
     local btn = Instance.new("TextButton", ScrollFrame)
     local cOn, cOff = Color3.fromRGB(40, 140, 60), Color3.fromRGB(40, 40, 45)
-    btn.BackgroundColor3 = defaultState and cOn or cOff
-    btn.Text = (defaultState and "✅ " or "❌ ") .. text
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 11
+    btn.BackgroundColor3 = defaultState and cOn or cOff; btn.Text = (defaultState and "✅ " or "❌ ") .. text; btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.GothamSemibold; btn.TextSize = 11
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
     local state = defaultState
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = state and cOn or cOff}):Play()
-        btn.Text = (state and "✅ " or "❌ ") .. text
-        callback(state)
-        SaveSettings()
-    end)
+    btn.MouseButton1Click:Connect(function() state = not state; TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = state and cOn or cOff}):Play(); btn.Text = (state and "✅ " or "❌ ") .. text; callback(state); SaveSettings() end)
     return btn
 end
 
 local function CreateInputSetting(title, configKeyEnable, configKeyNum, defaultNum)
-    local frame = Instance.new("Frame", ScrollFrame)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(0.65, 0, 1, 0)
-    btn.BackgroundTransparency = 1
-    local cOn, cOff = Color3.fromRGB(100, 255, 100), Color3.fromRGB(200, 200, 200)
-    btn.TextColor3 = Settings[configKeyEnable] and cOn or cOff
-    btn.Text = title
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 11
-    
-    local box = Instance.new("TextBox", frame)
-    box.Size = UDim2.new(0.35, -5, 0.8, 0)
-    box.Position = UDim2.new(0.65, 0, 0.1, 0)
-    box.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-    box.TextColor3 = Color3.new(1,1,1)
-    box.Text = tostring(Settings[configKeyNum] or defaultNum)
-    box.Font = Enum.Font.GothamBold
-    box.TextSize = 11
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-    
-    btn.MouseButton1Click:Connect(function()
-        Settings[configKeyEnable] = not Settings[configKeyEnable]
-        btn.TextColor3 = Settings[configKeyEnable] and cOn or cOff
-        SaveSettings()
-    end)
-    box.FocusLost:Connect(function()
-        local num = tonumber(box.Text)
-        if num then Settings[configKeyNum] = num else box.Text = tostring(Settings[configKeyNum]) end
-        SaveSettings()
-    end)
+    local frame = Instance.new("Frame", ScrollFrame); frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35); Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    local btn = Instance.new("TextButton", frame); btn.Size = UDim2.new(0.65, 0, 1, 0); btn.BackgroundTransparency = 1; local cOn, cOff = Color3.fromRGB(100, 255, 100), Color3.fromRGB(200, 200, 200); btn.TextColor3 = Settings[configKeyEnable] and cOn or cOff; btn.Text = title; btn.Font = Enum.Font.GothamSemibold; btn.TextSize = 11
+    local box = Instance.new("TextBox", frame); box.Size = UDim2.new(0.35, -5, 0.8, 0); box.Position = UDim2.new(0.65, 0, 0.1, 0); box.BackgroundColor3 = Color3.fromRGB(15, 15, 18); box.TextColor3 = Color3.new(1,1,1); box.Text = tostring(Settings[configKeyNum] or defaultNum); box.Font = Enum.Font.GothamBold; box.TextSize = 11; Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+    btn.MouseButton1Click:Connect(function() Settings[configKeyEnable] = not Settings[configKeyEnable]; btn.TextColor3 = Settings[configKeyEnable] and cOn or cOff; SaveSettings() end)
+    box.FocusLost:Connect(function() local num = tonumber(box.Text); if num then Settings[configKeyNum] = num else box.Text = tostring(Settings[configKeyNum]) end; SaveSettings() end)
 end
 
--- Nút chuyển đổi Return Mode
 local ReturnModeBtn = Instance.new("TextButton", ScrollFrame)
-ReturnModeBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 200)
-ReturnModeBtn.Text = "Về Base: " .. Settings.ReturnMode
-ReturnModeBtn.TextColor3 = Color3.new(1, 1, 1)
-ReturnModeBtn.Font = Enum.Font.GothamBold
-ReturnModeBtn.TextSize = 11
-Instance.new("UICorner", ReturnModeBtn).CornerRadius = UDim.new(0, 6)
-ReturnModeBtn.MouseButton1Click:Connect(function()
-    if Settings.ReturnMode == "Teleport" then Settings.ReturnMode = "Fly" else Settings.ReturnMode = "Teleport" end
-    ReturnModeBtn.Text = "Về Base: " .. Settings.ReturnMode
-    SaveSettings()
-end)
+ReturnModeBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 200); ReturnModeBtn.Text = "Về Base: " .. Settings.ReturnMode; ReturnModeBtn.TextColor3 = Color3.new(1, 1, 1); ReturnModeBtn.Font = Enum.Font.GothamBold; ReturnModeBtn.TextSize = 11; Instance.new("UICorner", ReturnModeBtn).CornerRadius = UDim.new(0, 6)
+ReturnModeBtn.MouseButton1Click:Connect(function() if Settings.ReturnMode == "Teleport" then Settings.ReturnMode = "Fly" else Settings.ReturnMode = "Teleport" end; ReturnModeBtn.Text = "Về Base: " .. Settings.ReturnMode; SaveSettings() end)
 
--- TÙY CHỌN UI
 CreateToggle("Auto Farm Trứng", Settings.AutoFarm, function(v) Settings.AutoFarm = v end)
 CreateToggle("Smart Server Hop", Settings.AutoHop, function(v) Settings.AutoHop = v end)
-CreateToggle("Bật ESP + Line", Settings.ESP_Enabled, function(v) 
-    Settings.ESP_Enabled = v 
-    for obj, data in pairs(ESP_Cache) do 
-        if data.Highlight then data.Highlight.Enabled = v end
-        if data.Line then data.Line.Visible = v end
-    end
-end)
-
+CreateToggle("Bật ESP + Line", Settings.ESP_Enabled, function(v) Settings.ESP_Enabled = v for obj, data in pairs(ESP_Cache) do if data.Highlight then data.Highlight.Enabled = v end; if data.Line then data.Line.Visible = v end end end)
 CreateInputSetting("Bật Speed", "EnableWalkSpeed", "WalkSpeed", 16)
 CreateInputSetting("Bật Jump", "EnableJumpPower", "JumpPower", 50)
-
-local flyFrame = Instance.new("Frame", ScrollFrame)
-flyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-Instance.new("UICorner", flyFrame).CornerRadius = UDim.new(0, 6)
-local flyLbl = Instance.new("TextLabel", flyFrame)
-flyLbl.Size = UDim2.new(0.65, 0, 1, 0); flyLbl.BackgroundTransparency = 1; flyLbl.Text = "Tốc độ Bay"; flyLbl.TextColor3 = Color3.new(1,1,1); flyLbl.Font = Enum.Font.GothamSemibold; flyLbl.TextSize = 11
-local flyBox = Instance.new("TextBox", flyFrame)
-flyBox.Size = UDim2.new(0.35, -5, 0.8, 0); flyBox.Position = UDim2.new(0.65, 0, 0.1, 0); flyBox.BackgroundColor3 = Color3.fromRGB(15, 15, 18); flyBox.TextColor3 = Color3.new(1,1,1); flyBox.Text = tostring(Settings.FlySpeed); flyBox.Font = Enum.Font.GothamBold; flyBox.TextSize = 11; Instance.new("UICorner", flyBox).CornerRadius = UDim.new(0, 4)
-flyBox.FocusLost:Connect(function() local num = tonumber(flyBox.Text); if num then Settings.FlySpeed = num else flyBox.Text = tostring(Settings.FlySpeed) end; SaveSettings() end)
-
+CreateInputSetting("Bật Bay", "AutoFarm", "FlySpeed", 10000) -- Dùng chung form để gọn
 CreateToggle("Xuyên Tường (Noclip)", Settings.Noclip, function(v) Settings.Noclip = v end)
 CreateToggle("Nhảy Vô Hạn", Settings.InfinityJump, function(v) Settings.InfinityJump = v end)
 
 for _, eggName in ipairs(PriorityOrder) do
     local isSelected = table.find(Settings.SelectedEggs, eggName) ~= nil
-    local btn = CreateToggle("Chọn: " .. eggName, isSelected, function(v)
-        if v then 
-            if not table.find(Settings.SelectedEggs, eggName) then table.insert(Settings.SelectedEggs, eggName) end
-        else
-            local idx = table.find(Settings.SelectedEggs, eggName)
-            if idx then table.remove(Settings.SelectedEggs, idx) end
-        end
-    end)
+    local btn = CreateToggle("Chọn: " .. eggName, isSelected, function(v) if v then if not table.find(Settings.SelectedEggs, eggName) then table.insert(Settings.SelectedEggs, eggName) end else local idx = table.find(Settings.SelectedEggs, eggName); if idx then table.remove(Settings.SelectedEggs, idx) end end end)
     btn.TextColor3 = TargetEggs[eggName]
 end
 ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#ScrollFrame:GetChildren() / 3) * 45)
 
 -- =========================================
--- GHI ĐÈ CHỈ SỐ LÊN MỨC CAO NHẤT
+-- LOGIC & CHỈ SỐ
 -- =========================================
 RunService.RenderStepped:Connect(function()
     StatusLbl.Text = CurrentStatus
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChild("Humanoid")
-    if hum then
-        if Settings.EnableWalkSpeed then hum.WalkSpeed = Settings.WalkSpeed end
-        if Settings.EnableJumpPower then hum.JumpPower = Settings.JumpPower end
-    end
-    
-    -- Cập nhật Line ESP liên tục
-    for obj, data in pairs(ESP_Cache) do
-        if data.Line and Settings.ESP_Enabled and IsEggValid(obj) then
-            local pos = obj:IsA("Model") and (obj.PrimaryPart and obj.PrimaryPart.Position or obj:GetPivot().Position) or obj.Position
-            local vector, onScreen = Camera:WorldToViewportPoint(pos)
-            if onScreen then
-                data.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                data.Line.To = Vector2.new(vector.X, vector.Y)
-                data.Line.Visible = true
-            else
-                data.Line.Visible = false
-            end
-        elseif data.Line then
-            data.Line.Visible = false
-        end
-    end
+    local char = LocalPlayer.Character; local hum = char and char:FindFirstChild("Humanoid")
+    if hum then if Settings.EnableWalkSpeed then hum.WalkSpeed = Settings.WalkSpeed end; if Settings.EnableJumpPower then hum.JumpPower = Settings.JumpPower end end
 end)
+RunService.Stepped:Connect(function() if Settings.Noclip and LocalPlayer.Character then for _, part in pairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end end end end)
+UserInputService.JumpRequest:Connect(function() if Settings.InfinityJump and LocalPlayer.Character then local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"); if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end end end)
 
-RunService.Stepped:Connect(function()
-    if Settings.Noclip and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
-        end
-    end
-end)
-
-UserInputService.JumpRequest:Connect(function()
-    if Settings.InfinityJump and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end
-end)
-
--- =========================================
--- NHẬN DIỆN ESP & LINE TRACER
--- =========================================
-function CheckAndAddESP(obj)
-    local cur = obj.Parent
-    while cur and cur ~= Workspace do
-        local n = string.lower(cur.Name)
-        if string.find(n, "base") or string.find(n, "plot") or cur:FindFirstChild("Humanoid") then return end
-        cur = cur.Parent
-    end
-    for exactName, color in pairs(TargetEggs) do
-        if string.find(string.lower(obj.Name), string.lower(exactName)) and not ESP_Cache[obj] then
-            local highlight = Instance.new("Highlight")
-            highlight.FillColor = color; highlight.OutlineColor = Color3.new(1, 1, 1); highlight.FillTransparency = 0.5; highlight.Enabled = Settings.ESP_Enabled; highlight.Parent = obj
-            
-            local line = Drawing.new("Line")
-            line.Color = color
-            line.Thickness = 1.5
-            line.Transparency = 1
-            line.Visible = false
-            
-            ESP_Cache[obj] = { Name = exactName, Color = color, Highlight = highlight, Line = line }; break
-        end
-    end
-end
-Workspace.DescendantAdded:Connect(function(des) CheckAndAddESP(des) end) -- Đã xóa task.wait(0.05)
-Workspace.DescendantRemoving:Connect(function(des) 
-    if ESP_Cache[des] then 
-        if ESP_Cache[des].Highlight then ESP_Cache[des].Highlight:Destroy() end
-        if ESP_Cache[des].Line then ESP_Cache[des].Line:Remove() end
-        ESP_Cache[des] = nil 
-    end 
-end)
-for _, des in ipairs(Workspace:GetDescendants()) do CheckAndAddESP(des) end
-
--- =========================================
--- LOGIC DI CHUYỂN & TƯƠNG TÁC 0MS
--- =========================================
 function ServerHop()
     CurrentStatus = "Hết trứng, đang đổi Server..."
-    StatusLbl.TextColor3 = Color3.fromRGB(255, 100, 100)
     local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-    pcall(function()
-        local response = game:HttpGet(Api)
-        if response then
-            local data = HttpService:JSONDecode(response)
-            if data and data.data then
-                for _, server in ipairs(data.data) do
-                    if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                        TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
-                        task.wait(3)
-                    end
-                end
-            end
-        end
-    end)
+    pcall(function() local response = game:HttpGet(Api); if response then local data = HttpService:JSONDecode(response); if data and data.data then for _, server in ipairs(data.data) do if server.playing < server.maxPlayers and server.id ~= game.JobId then TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer); task.wait(3) end end end end end)
 end
 
 function AutoDetectBase()
     for _, folderName in ipairs({"Plots", "Ranches", "Bases", "Tycoons"}) do
         local folder = Workspace:FindFirstChild(folderName)
-        if folder then
-            for _, plot in ipairs(folder:GetChildren()) do
-                local ownerVal = plot:FindFirstChild("Owner", true) or plot:FindFirstChild("Player", true)
-                if ownerVal and (ownerVal.Value == LocalPlayer or ownerVal.Value == LocalPlayer.Name) then
-                    local dest = plot:FindFirstChild("Floor", true) or plot:FindFirstChildWhichIsA("BasePart", true)
-                    if dest then return dest.Position end
-                end
-            end
-        end
+        if folder then for _, plot in ipairs(folder:GetChildren()) do local ownerVal = plot:FindFirstChild("Owner", true) or plot:FindFirstChild("Player", true); if ownerVal and (ownerVal.Value == LocalPlayer or ownerVal.Value == LocalPlayer.Name) then local dest = plot:FindFirstChild("Floor", true) or plot:FindFirstChildWhichIsA("BasePart", true); if dest then return dest.Position end end end end
     end
     return nil
-end
-
-local CurrentTween = nil
-function FastTween(targetCFrame)
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local dist = (hrp.Position - targetCFrame.Position).Magnitude
-    local timeToTravel = math.max(0.02, dist / Settings.FlySpeed)
-    
-    if CurrentTween then CurrentTween:Cancel() end
-    CurrentTween = TweenService:Create(hrp, TweenInfo.new(timeToTravel, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
-    CurrentTween:Play()
-    CurrentTween.Completed:Wait()
 end
 
 function ReturnToBase()
@@ -408,115 +186,142 @@ function ReturnToBase()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp and CustomBasePos then
         local safeBasePos = CFrame.new(CustomBasePos + Vector3.new(0, 5, 0))
-        if Settings.ReturnMode == "Teleport" then
-            hrp.CFrame = safeBasePos
-        else
-            FastTween(safeBasePos)
-        end
+        if Settings.ReturnMode == "Teleport" then hrp.CFrame = safeBasePos else TweenService:Create(hrp, TweenInfo.new(math.max(0.02, (hrp.Position - safeBasePos.Position).Magnitude / Settings.FlySpeed), Enum.EasingStyle.Linear), {CFrame = safeBasePos}):Play() end
     end
 end
 
--- Kích hoạt tất cả prompt trong tích tắc
-function UltraFastInteract(eggModel)
-    for _, prompt in ipairs(eggModel:GetDescendants()) do
+-- =========================================
+-- HỆ THỐNG XỬ LÝ EGG SIÊU TỐC (0MS TỰ ĐỘNG)
+-- =========================================
+
+-- Caching Base Position để không phải tính toán khi trứng vừa xuất hiện
+task.spawn(function()
+    while task.wait(5) do
+        if not CustomBasePos then CustomBasePos = AutoDetectBase() end
+    end
+end)
+
+local function FireAllPrompts(obj)
+    -- Tìm tất cả ProximityPrompt và kích hoạt tức thì (Bỏ qua khoảng cách)
+    for _, prompt in ipairs(obj:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") then
-            prompt.HoldDuration = 0 
             prompt.RequiresLineOfSight = false
-            prompt.MaxActivationDistance = 100 
-            
-            if fireproximityprompt then 
+            prompt.MaxActivationDistance = 9999
+            if fireproximityprompt then
                 fireproximityprompt(prompt, 0)
                 fireproximityprompt(prompt, 1)
                 fireproximityprompt(prompt)
             end
-            pcall(function() prompt:InputHoldBegin() end)
-            pcall(function() prompt:InputHoldEnd() end)
         end
     end
 end
 
-function GetVolcanicSafePos(eggPos)
-    return eggPos + Vector3.new(0, 556.38, 0)
-end
+-- XỬ LÝ SỰ KIỆN TRỨNG VỪA XUẤT HIỆN TRÊN BẢN ĐỒ
+Workspace.DescendantAdded:Connect(function(obj)
+    if not Settings.AutoFarm then return end
+    
+    local name = obj.Name
+    local targetEggType = nil
 
-task.spawn(function()
-    while task.wait() do 
-        if Settings.AutoFarm then
-            if not CustomBasePos then CustomBasePos = AutoDetectBase() or Vector3.new(0, 50, 0) end
-            local targetObj, targetName = nil, ""
-            
-            for _, pEgg in ipairs(PriorityOrder) do
-                if table.find(Settings.SelectedEggs, pEgg) then
-                    for obj, data in pairs(ESP_Cache) do
-                        if data.Name == pEgg then
-                            if IsEggValid(obj) then targetObj = obj; targetName = pEgg; break
-                            else 
-                                if data.Highlight then data.Highlight:Destroy() end
-                                if data.Line then data.Line:Remove() end
-                                ESP_Cache[obj] = nil 
-                            end
-                        end
-                    end
+    -- Kiểm tra siêu nhanh xem vật thể có phải trứng mình cần không
+    for _, pEgg in ipairs(Settings.SelectedEggs) do
+        if string.find(string.lower(name), string.lower(pEgg)) then
+            targetEggType = pEgg
+            break
+        end
+    end
+
+    if targetEggType then
+        task.spawn(function()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            -- Đợi game load tọa độ vật thể (chỉ mất vài khung hình siêu nhỏ)
+            local eggPos
+            local timeout = tick() + 2
+            while tick() < timeout do
+                if obj:IsA("Model") and obj.PrimaryPart then
+                    eggPos = obj:GetPivot().Position
+                    break
+                elseif obj:IsA("BasePart") then
+                    eggPos = obj.Position
+                    break
                 end
-                if targetObj then break end
+                RunService.RenderStepped:Wait() -- Chờ khung hình tiếp theo (không dùng task.wait)
             end
 
-            if targetObj then
-                CurrentStatus = "Đang lấy: " .. targetName
-                StatusLbl.TextColor3 = TargetEggs[targetName] or Color3.fromRGB(255, 255, 0)
+            if not eggPos then return end -- Lỗi load vật thể
 
-                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local eggPos = targetObj:IsA("Model") and (targetObj.PrimaryPart and targetObj.PrimaryPart.Position or targetObj:GetPivot().Position) or targetObj:IsA("BasePart") and targetObj.Position
-                    if eggPos then
-                        if targetName == "Volcanic Egg" then
-                            -- Volcanic: Dịch chuyển chuẩn lên đỉnh (0ms delay) -> Tween xuống và tương tác liên tục
-                            hrp.CFrame = CFrame.new(GetVolcanicSafePos(eggPos))
-                            
-                            local twn = TweenService:Create(hrp, TweenInfo.new(math.max(0.02, (hrp.Position - (eggPos + Vector3.new(0, 2.5, 0))).Magnitude / Settings.FlySpeed), Enum.EasingStyle.Linear), {CFrame = CFrame.new(eggPos + Vector3.new(0, 2.5, 0))})
-                            twn:Play()
-                            
-                            -- Spam kích hoạt trong lúc rớt xuống. Hủy ngay khi ăn được trứng.
-                            while twn.PlaybackState == Enum.PlaybackState.Playing do
-                                if not IsEggValid(targetObj) then break end
-                                UltraFastInteract(targetObj)
-                                task.wait() 
-                            end
-                            
-                            if twn.PlaybackState == Enum.PlaybackState.Playing then twn:Cancel() end
-                            ReturnToBase()
-                        else
-                            -- Các trứng thường: Dịch chuyển và tương tác ngay trong CÙNG MỘT KHUNG HÌNH (0ms)
-                            hrp.CFrame = CFrame.new(eggPos + Vector3.new(0, 2.5, 0))
-                            UltraFastInteract(targetObj)
-                            
-                            -- Quét siêu tốc (tối đa 0.3s) để đảm bảo server đã ghi nhận, hủy ngay khi trứng biến mất
-                            local timeout = tick() + 0.3
-                            while IsEggValid(targetObj) and tick() < timeout do 
-                                UltraFastInteract(targetObj)
-                                task.wait()
-                            end
-                            
-                            ReturnToBase()
-                        end
+            CurrentStatus = "⚡ TỐC BIẾN NHẶT: " .. targetEggType
+
+            -- ÉP TÌM PROXIMITY PROMPT TRONG CHỚP MẮT
+            local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+            local pTimeout = tick() + 1
+            while not prompt and tick() < pTimeout do
+                prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+                RunService.RenderStepped:Wait()
+            end
+
+            if targetEggType == "Volcanic Egg" then
+                -- Trứng Volcanic: Bay xuống an toàn từ 556.38
+                local safePos = eggPos + Vector3.new(0, 556.38, 0)
+                hrp.CFrame = CFrame.new(safePos)
+                local twn = TweenService:Create(hrp, TweenInfo.new(math.max(0.01, (hrp.Position - (eggPos + Vector3.new(0, 2.5, 0))).Magnitude / Settings.FlySpeed), Enum.EasingStyle.Linear), {CFrame = CFrame.new(eggPos + Vector3.new(0, 2.5, 0))})
+                twn:Play()
+                
+                -- Bắn nút E liên tục khi đang bay xuống
+                local conn
+                conn = RunService.RenderStepped:Connect(function()
+                    if obj and obj.Parent then FireAllPrompts(obj) else 
+                        twn:Cancel()
+                        if conn then conn:Disconnect() end
+                        ReturnToBase()
                     end
-                end
+                end)
             else
-                if Settings.AutoHop and #Settings.SelectedEggs > 0 then
-                    task.wait(2)
-                    local anyEggLeft = false
-                    for obj, data in pairs(ESP_Cache) do
-                        if table.find(Settings.SelectedEggs, data.Name) and IsEggValid(obj) then anyEggLeft = true; break end
+                -- TRỨNG THƯỜNG: TELEPORT VÀ NHẤN E TRONG CÙNG 1 KHUNG HÌNH (0MS)
+                hrp.CFrame = CFrame.new(eggPos + Vector3.new(0, 2.5, 0))
+                FireAllPrompts(obj) -- Bắn lần 1 lập tức
+                
+                -- Tạo 1 luồng bắn E dự phòng chạy song song cực gắt (tối đa 0.3s)
+                local endTick = tick() + 0.3
+                local conn
+                conn = RunService.RenderStepped:Connect(function()
+                    if obj and obj.Parent and tick() < endTick then
+                        hrp.CFrame = CFrame.new(eggPos + Vector3.new(0, 2.5, 0)) -- Khóa cứng tọa độ
+                        FireAllPrompts(obj)
+                    else
+                        if conn then conn:Disconnect() end
+                        ReturnToBase()
                     end
-                    if not anyEggLeft then ServerHop(); task.wait(5) end
-                else
-                    CurrentStatus = "Đợi trứng spawn..."
-                    StatusLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
-                end
+                end)
             end
-        else
-            CurrentStatus = "Đang nhàn rỗi (AutoFarm OFF)"
-            StatusLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end)
+    end
+end)
+
+-- Quét dự phòng (trường hợp trứng đã có sẵn trên map từ trước)
+task.spawn(function()
+    while task.wait(1) do
+        if Settings.AutoFarm then
+            local anyEggLeft = false
+            for _, des in ipairs(Workspace:GetDescendants()) do
+                for _, pEgg in ipairs(Settings.SelectedEggs) do
+                    if string.find(string.lower(des.Name), string.lower(pEgg)) and des:FindFirstChildWhichIsA("ProximityPrompt", true) then
+                        anyEggLeft = true
+                        break
+                    end
+                end
+                if anyEggLeft then break end
+            end
+            
+            if not anyEggLeft and Settings.AutoHop and #Settings.SelectedEggs > 0 then
+                ServerHop()
+                task.wait(5)
+            elseif not anyEggLeft then
+                CurrentStatus = "Đang rình trứng sinh ra (0ms)..."
+            end
         end
     end
 end)
