@@ -1,6 +1,6 @@
 -- =========================================
--- VIP EGG HUNTER (V17.1 HORIZONTAL MINIMALIST)
--- Bổ sung: Các nút chọn loại trứng để Farm
+-- VIP EGG HUNTER (V17.2 HORIZONTAL MINIMALIST)
+-- Cập nhật: Auto Hop tức thì, UI nút Chọn xanh lá
 -- =========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,8 +17,8 @@ local Camera = Workspace.CurrentCamera
 -- =========================================
 -- HỆ THỐNG LƯU SETTING
 -- =========================================
-local ConfigFile = "VIP_Egg_Config_V17.1.json"
-local ServerFile = "VIP_Egg_Servers_V17.1.json"
+local ConfigFile = "VIP_Egg_Config_V17.2.json"
+local ServerFile = "VIP_Egg_Servers_V17.2.json"
 
 local Settings = {
     AutoFarm = false, FarmAll = true, FlySpeed = 8000, AutoHop = false,
@@ -136,7 +136,7 @@ end
 -- CUSTOM UI NGANG (HORIZONTAL MINIMALIST)
 -- =========================================
 local UI = Instance.new("ScreenGui")
-UI.Name = "VIP_Egg_V17_1"
+UI.Name = "VIP_Egg_V17_2"
 UI.ResetOnSpawn = false
 if CoreGui:FindFirstChild(UI.Name) then CoreGui[UI.Name]:Destroy() end
 UI.Parent = CoreGui
@@ -237,8 +237,9 @@ end
 local function CreateEggToggle(parent, eggName)
     local isSelected = table.find(Settings.SelectedEggs, eggName) ~= nil
     local btn = Instance.new("TextButton")
-    btn.BackgroundColor3 = isSelected and Color3.fromRGB(150, 80, 200) or Color3.fromRGB(45, 45, 50)
-    btn.Text = (isSelected and "ĐANG TÌM: " or "BỎ QUA: ") .. eggName
+    -- Đổi thành Xanh Lá khi được chọn, Xám khi bỏ chọn
+    btn.BackgroundColor3 = isSelected and Color3.fromRGB(40, 160, 70) or Color3.fromRGB(45, 45, 50)
+    btn.Text = (isSelected and "ĐANG TÌM: " or "CHỌN: ") .. eggName
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.GothamSemibold
     btn.TextSize = 12
@@ -254,8 +255,8 @@ local function CreateEggToggle(parent, eggName)
             table.insert(Settings.SelectedEggs, eggName)
             isSelected = true
         end
-        btn.BackgroundColor3 = isSelected and Color3.fromRGB(150, 80, 200) or Color3.fromRGB(45, 45, 50)
-        btn.Text = (isSelected and "ĐANG TÌM: " or "BỎ QUA: ") .. eggName
+        btn.BackgroundColor3 = isSelected and Color3.fromRGB(40, 160, 70) or Color3.fromRGB(45, 45, 50)
+        btn.Text = (isSelected and "ĐANG TÌM: " or "CHỌN: ") .. eggName
         SaveSettings()
     end)
 end
@@ -300,10 +301,7 @@ CreateToggle(TabFarm, "Bật Cày Trứng", Settings.AutoFarm, function(v) Setti
 CreateToggle(TabFarm, "Farm Tất Cả", Settings.FarmAll, function(v) Settings.FarmAll = v end)
 CreateInput(TabFarm, "Tốc Độ Bay:", Settings.FlySpeed, function(v) Settings.FlySpeed = v end)
 CreateToggle(TabFarm, "Auto Hop Server", Settings.AutoHop, function(v) Settings.AutoHop = v end)
--- Nút chọn từng loại trứng (Màu tím)
-for _, eggName in ipairs(PriorityOrder) do
-    CreateEggToggle(TabFarm, eggName)
-end
+for _, eggName in ipairs(PriorityOrder) do CreateEggToggle(TabFarm, eggName) end
 
 -- TAB 2: SỨC MẠNH
 local TabBuff = CreateTab("💪 SỨC MẠNH", false)
@@ -356,6 +354,7 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 task.spawn(function()
+    task.wait(2) -- Đợi một chút khi vừa load vào game để lấy cache
     while task.wait(0.1) do 
         if Settings.AutoFarm and CustomBasePos then
             local targetObj, targetName = nil, ""
@@ -389,10 +388,8 @@ task.spawn(function()
                     end
                 end
             elseif Settings.AutoHop then
-                task.wait(1.5)
-                local hasEgg = false
-                for obj in pairs(ESP_Cache) do if obj and obj.Parent then hasEgg = true; break end end
-                if not hasEgg then HopServer() end
+                -- HOP NGAY LẬP TỨC NẾU KHÔNG CÒN TRỨNG
+                HopServer() 
             end
         end
     end
