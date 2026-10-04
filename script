@@ -1,6 +1,6 @@
 -- =========================================
--- VIP EGG HUNTER (V17.2 HORIZONTAL MINIMALIST)
--- Cập nhật: Auto Hop tức thì, UI nút Chọn xanh lá
+-- VIP EGG HUNTER (V17.4 HORIZONTAL)
+-- Cập nhật: Sửa lỗi ngưng quét sau khi Hop, xoá filter lỗi gây bỏ sót trứng
 -- =========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,8 +17,7 @@ local Camera = Workspace.CurrentCamera
 -- =========================================
 -- HỆ THỐNG LƯU SETTING
 -- =========================================
-local ConfigFile = "VIP_Egg_Config_V17.2.json"
-local ServerFile = "VIP_Egg_Servers_V17.2.json"
+local ConfigFile = "VIP_Egg_Config_V17.4.json"
 
 local Settings = {
     AutoFarm = false, FarmAll = true, FlySpeed = 8000, AutoHop = false,
@@ -54,32 +53,54 @@ local TargetEggs = {
     ["Blackhole Egg"] = Color3.fromRGB(138, 43, 226)
 }
 local ESP_Cache = {}
+local isHopping = false 
+local ToggleBtn = Instance.new("TextButton")
 
 local function HopServer()
-    local serversVisited = {}
-    if readfile and isfile and isfile(ServerFile) then pcall(function() serversVisited = HttpService:JSONDecode(readfile(ServerFile)) end) end
-    serversVisited[game.JobId] = true
-    if writefile then pcall(function() writefile(ServerFile, HttpService:JSONEncode(serversVisited)) end) end
+    if isHopping then return end
+    isHopping = true
+    
+    if ToggleBtn then
+        ToggleBtn.Text = "ĐANG HOP..."
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    end
 
     local queue = queue_on_teleport or syn and syn.queue_on_teleport or fluxus and fluxus.queue_on_teleport
-    if queue then pcall(function() queue([[task.wait(3)]]) end) end
+    if queue then pcall(function() queue([[task.wait(2)]]) end) end
 
-    local apiUrl = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&excludeFullGames=true&limit=100"
-    local response = nil
-    pcall(function() response = game:HttpGet(apiUrl) end)
+    local req = request or http_request or (syn and syn.request) or (http and http.request)
+    local hopped = false
     
-    if response then
-        local data = HttpService:JSONDecode(response)
-        if data and data.data then
-            for _, server in ipairs(data.data) do
-                if server.playing < server.maxPlayers - 1 and server.id ~= game.JobId and not serversVisited[server.id] then
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
-                    task.wait(2) 
+    if req then
+        local success, res = pcall(function()
+            return req({
+                Url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&excludeFullGames=true&limit=100",
+                Method = "GET"
+            })
+        end)
+        if success and res.Body then
+            local data = HttpService:JSONDecode(res.Body)
+            if data and data.data then
+                local validServers = {}
+                for _, server in ipairs(data.data) do
+                    if type(server) == "table" and server.playing < server.maxPlayers - 1 and server.id ~= game.JobId then
+                        table.insert(validServers, server.id)
+                    end
+                end
+                if #validServers > 0 then
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, validServers[math.random(1, #validServers)], LocalPlayer)
+                    hopped = true
                 end
             end
         end
     end
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    
+    if not hopped then
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end
+    
+    task.wait(5)
+    isHopping = false
 end
 
 function AutoDetectBase()
@@ -95,7 +116,7 @@ function AutoDetectBase()
             end
         end
     end
-    return Vector3.new(0, 50, 0) 
+    return nil -- Trả về nil nếu chưa load để lặp lại việc tìm base
 end
 
 local CurrentTween = nil
@@ -132,11 +153,19 @@ function GetVolcanicSafePos(eggPos, targetObj)
     return eggPos + Vector3.new(0, 200, 0) 
 end
 
+-- Bộ lọc đã bỏ check tàng hình (Transparency) để không bỏ sót trứng có Hitbox tàng hình
+local function IsEggValid(obj)
+    if not obj or not obj.Parent or not obj:IsDescendantOf(Workspace) then return false end
+    local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+    if prompt and not prompt.Enabled then return false end
+    return true
+end
+
 -- =========================================
--- CUSTOM UI NGANG (HORIZONTAL MINIMALIST)
+-- CUSTOM UI NGANG
 -- =========================================
 local UI = Instance.new("ScreenGui")
-UI.Name = "VIP_Egg_V17_2"
+UI.Name = "VIP_Egg_V17_4"
 UI.ResetOnSpawn = false
 if CoreGui:FindFirstChild(UI.Name) then CoreGui[UI.Name]:Destroy() end
 UI.Parent = CoreGui
@@ -237,7 +266,6 @@ end
 local function CreateEggToggle(parent, eggName)
     local isSelected = table.find(Settings.SelectedEggs, eggName) ~= nil
     local btn = Instance.new("TextButton")
-    -- Đổi thành Xanh Lá khi được chọn, Xám khi bỏ chọn
     btn.BackgroundColor3 = isSelected and Color3.fromRGB(40, 160, 70) or Color3.fromRGB(45, 45, 50)
     btn.Text = (isSelected and "ĐANG TÌM: " or "CHỌN: ") .. eggName
     btn.TextColor3 = Color3.new(1, 1, 1)
@@ -317,11 +345,10 @@ local TabVis = CreateTab("👁️ HIỂN THỊ", false)
 CreateToggle(TabVis, "Bật Text ESP", Settings.ESP_Enabled, function(v) Settings.ESP_Enabled = v end)
 CreateToggle(TabVis, "Bật ESP Line", Settings.ESP_Line, function(v) Settings.ESP_Line = v end)
 
-local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0, 80, 0, 30)
 ToggleBtn.Position = UDim2.new(0, 10, 0, 10)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-ToggleBtn.Text = "MENU V17"
+ToggleBtn.Text = "MENU V17.4"
 ToggleBtn.TextColor3 = Color3.new(1,1,1)
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.Parent = UI
@@ -354,15 +381,27 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 task.spawn(function()
-    task.wait(2) -- Đợi một chút khi vừa load vào game để lấy cache
+    task.wait(3) -- Đợi game load xong các objects
     while task.wait(0.1) do 
-        if Settings.AutoFarm and CustomBasePos then
+        -- FIX LỖI KHÔNG QUÉT KHI SANG SERVER MỚI (Tự động nạp lại Base nếu đang trống)
+        if Settings.AutoFarm and not CustomBasePos then
+            CustomBasePos = AutoDetectBase() or Vector3.new(0, 50, 0)
+        end
+
+        if Settings.AutoFarm and CustomBasePos and not isHopping then
             local targetObj, targetName = nil, ""
+            
             for _, pEgg in ipairs(PriorityOrder) do
                 if Settings.FarmAll or table.find(Settings.SelectedEggs, pEgg) then
                     for obj, data in pairs(ESP_Cache) do
-                        if data.Name == pEgg and obj and obj.Parent then
-                            targetObj = obj; targetName = pEgg; break
+                        if data.Name == pEgg then
+                            if IsEggValid(obj) then
+                                targetObj = obj; targetName = pEgg; break
+                            else
+                                if ESP_Cache[obj].Billboard then ESP_Cache[obj].Billboard:Destroy() end
+                                if ESP_Cache[obj].Line and HasDrawing then ESP_Cache[obj].Line:Remove() end
+                                ESP_Cache[obj] = nil
+                            end
                         end
                     end
                 end
@@ -385,11 +424,22 @@ task.spawn(function()
                         FastInteract(targetObj) 
                         task.wait(0.05)
                         FastTween(CFrame.new(CustomBasePos + Vector3.new(0, 5, 0)))
+                        task.wait(0.2)
                     end
                 end
             elseif Settings.AutoHop then
-                -- HOP NGAY LẬP TỨC NẾU KHÔNG CÒN TRỨNG
-                HopServer() 
+                -- Check an toàn lần cuối trước khi Hop
+                local hasAnyTarget = false
+                for obj, data in pairs(ESP_Cache) do
+                    if (Settings.FarmAll or table.find(Settings.SelectedEggs, data.Name)) and IsEggValid(obj) then
+                        hasAnyTarget = true
+                        break
+                    end
+                end
+                
+                if not hasAnyTarget then
+                    HopServer() 
+                end
             end
         end
     end
