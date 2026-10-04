@@ -1,111 +1,29 @@
 -- =========================================
--- VIP EGG HUNTER - DELTA X (V14 ULTIMATE POWER)
--- Update: Đổi thanh kéo thành ô nhập số (Input Box) vô giới hạn
+-- VIP EGG HUNTER (V15 INSTANT UI)
+-- Update: Custom UI cực nhẹ (Load 0s), Dịch chuyển đến trứng -> Bay về
 -- =========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
-local SafeGui = (gethui and gethui()) or game:GetService("CoreGui"):FindFirstChild("RobloxGui") or game:GetService("CoreGui")
-
--- =========================================
--- FILE HỆ THỐNG & TỰ ĐỘNG LOAD SCRIPT
--- =========================================
-local ConfigFile = "VIP_Egg_Config_V14.json"
-local ServerFile = "VIP_Egg_Servers_V14.json"
-local ScriptAutoLoadFile = "VIP_Egg_V14_AutoLoad.lua"
 
 local Settings = {
-    ESP_Enabled = false,
-    ESP_Line = false,
-    Noclip = false,
-    InfJump = false,
+    AutoFarm = false, FarmAll = true, FlySpeed = 8000, AutoHop = false,
+    Noclip = false, InfJump = false,
     SpeedBuff = false, SpeedValue = 150,
     JumpBuff = false, JumpValue = 200,
-    FlySpeed = 8000, 
-    AutoFarm = false,
-    AutoHop = false,
-    FarmAll = true,
+    ESP_Enabled = false, ESP_Line = false,
     SelectedEggs = {"Volcanic Egg"}
 }
 
--- Lưu trữ file script hiện tại để tự động chạy lại khi qua server mới
-if writefile then
-    local scriptContent = "loadstring(game:HttpGet('https://raw.githubusercontent.com/Example/AutoLoad/main/Load.lua'))() -- Fallback\ntask.wait(3)" 
-    pcall(function() writefile(ScriptAutoLoadFile, "-- Auto Load V14") end) 
-end
-
-local function SaveSettings()
-    if writefile then pcall(function() writefile(ConfigFile, HttpService:JSONEncode(Settings)) end) end
-end
-local function LoadSettings()
-    if readfile and isfile and isfile(ConfigFile) then
-        pcall(function()
-            local decoded = HttpService:JSONDecode(readfile(ConfigFile))
-            for k, v in pairs(decoded) do Settings[k] = v end
-        end)
-    end
-end
-LoadSettings()
-
--- CHỨC NĂNG HOP SERVER (FIX LỖI CỰC MẠNH)
-local function HopServer()
-    local serversVisited = {}
-    if readfile and isfile and isfile(ServerFile) then
-        pcall(function() serversVisited = HttpService:JSONDecode(readfile(ServerFile)) end)
-    end
-    serversVisited[game.JobId] = true
-    
-    local count = 0
-    for _ in pairs(serversVisited) do count = count + 1 end
-    if count > 80 then serversVisited = { [game.JobId] = true } end
-    if writefile then pcall(function() writefile(ServerFile, HttpService:JSONEncode(serversVisited)) end) end
-
-    -- Gắn queue_on_teleport để load lại script
-    local queue_on_teleport = queue_on_teleport or syn and syn.queue_on_teleport or fluxus and fluxus.queue_on_teleport
-    if queue_on_teleport and readfile and isfile then
-        pcall(function()
-            queue_on_teleport([[
-                task.wait(3)
-                -- Lệnh gọi lại kịch bản tự động bằng API executor của bạn
-            ]])
-        end)
-    end
-
-    local apiUrl = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&excludeFullGames=true&limit=100"
-    local response = nil
-    pcall(function() response = game:HttpGet(apiUrl) end)
-    
-    if response then
-        local data = HttpService:JSONDecode(response)
-        if data and data.data then
-            for _, server in ipairs(data.data) do
-                if server.playing < server.maxPlayers - 1 and server.id ~= game.JobId and not serversVisited[server.id] then
-                    TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
-                    task.wait(2) 
-                end
-            end
-        end
-    end
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end
-
--- =========================================
--- OPTIMIZE MAX PERFORMANCE (TỐI ƯU CỰC ĐẠI)
--- =========================================
-LocalPlayer.Idled:Connect(function() VirtualUser:ClickButton2(Vector2.new()) end)
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 9e9
-Workspace.StreamingEnabled = false
-
+local CustomBasePos = nil
 local PriorityOrder = {"Volcanic Egg", "Cherub Egg", "Solaris Egg", "Blackhole Egg"}
 local TargetEggs = {
     ["Volcanic Egg"] = Color3.fromRGB(255, 30, 0),
@@ -114,54 +32,172 @@ local TargetEggs = {
     ["Blackhole Egg"] = Color3.fromRGB(138, 43, 226)
 }
 local ESP_Cache = {}
-local CustomBasePos = nil
 
 -- =========================================
--- VÒNG LẶP SỨC MẠNH (SPEED/JUMP/NOCLIP OVERRIDE)
+-- CUSTOM UI (LOAD TỨC THÌ)
 -- =========================================
-RunService.Stepped:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
+local UI = Instance.new("ScreenGui")
+UI.Name = "VIP_Egg_V15"
+UI.ResetOnSpawn = false
+if CoreGui:FindFirstChild(UI.Name) then CoreGui[UI.Name]:Destroy() end
+UI.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 320, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -225)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = UI
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "⚡ VIP EGG HUNTER V15"
+Title.TextColor3 = Color3.fromRGB(255, 200, 0)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -20, 1, -50)
+Scroll.Position = UDim2.new(0, 10, 0, 40)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 4
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 600)
+Scroll.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 8)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = Scroll
+
+-- Tính năng Kéo Thả Menu (Draggable)
+local dragToggle, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragToggle = true; dragStart = input.Position; startPos = MainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragToggle = false end end)
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if dragToggle then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end
+end)
+
+-- Hàm tạo Nút Bật/Tắt
+local function CreateToggle(text, defaultState, callback)
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(1, 0, 0, 35)
+    toggleBtn.BackgroundColor3 = defaultState and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(50, 50, 55)
+    toggleBtn.Text = (defaultState and "✅ " or "❌ ") .. text
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.Font = Enum.Font.GothamSemibold
+    toggleBtn.TextSize = 14
+    toggleBtn.Parent = Scroll
+    Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
     
-    if Settings.Noclip then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
-            end
-        end
-    end
-end)
+    local state = defaultState
+    toggleBtn.MouseButton1Click:Connect(function()
+        state = not state
+        toggleBtn.BackgroundColor3 = state and Color3.fromRGB(40, 180, 80) or Color3.fromRGB(50, 50, 55)
+        toggleBtn.Text = (state and "✅ " or "❌ ") .. text
+        callback(state)
+    end)
+end
 
-RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        if Settings.SpeedBuff then hum.WalkSpeed = Settings.SpeedValue end
-        if Settings.JumpBuff then 
-            hum.UseJumpPower = true 
-            hum.JumpPower = Settings.JumpValue 
-        end
-    end
-end)
+-- Hàm tạo Ô nhập số
+local function CreateInput(text, defaultVal, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundTransparency = 1
+    frame.Parent = Scroll
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(0.35, 0, 1, 0)
+    box.Position = UDim2.new(0.65, 0, 0, 0)
+    box.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    box.Text = tostring(defaultVal)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.Font = Enum.Font.GothamSemibold
+    box.TextSize = 14
+    box.Parent = frame
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+    
+    box.FocusLost:Connect(function()
+        local num = tonumber(box.Text)
+        if num then callback(num) else box.Text = tostring(defaultVal) end
+    end)
+end
 
-UserInputService.JumpRequest:Connect(function()
-    if Settings.InfJump and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-    end
-end)
+local function CreateHeader(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 25)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "--- " .. text .. " ---"
+    lbl.TextColor3 = Color3.fromRGB(150, 150, 255)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 12
+    lbl.Parent = Scroll
+end
+
+-- XÂY DỰNG MENU
+CreateHeader("AUTO FARM")
+CreateToggle("Bật Cày Trứng (Auto Farm)", Settings.AutoFarm, function(v) Settings.AutoFarm = v if v then CustomBasePos = AutoDetectBase() end end)
+CreateToggle("Farm Tất Cả Trứng", Settings.FarmAll, function(v) Settings.FarmAll = v end)
+CreateInput("Tốc độ Bay (Về Base):", Settings.FlySpeed, function(v) Settings.FlySpeed = v end)
+CreateToggle("Auto Hop Server", Settings.AutoHop, function(v) Settings.AutoHop = v end)
+
+CreateHeader("SỨC MẠNH & TỐC ĐỘ")
+CreateToggle("Bật Buff Tốc Độ", Settings.SpeedBuff, function(v) Settings.SpeedBuff = v end)
+CreateInput("Số Tốc Độ:", Settings.SpeedValue, function(v) Settings.SpeedValue = v end)
+CreateToggle("Bật Buff Nhảy", Settings.JumpBuff, function(v) Settings.JumpBuff = v end)
+CreateInput("Số Lực Nhảy:", Settings.JumpValue, function(v) Settings.JumpValue = v end)
+CreateToggle("Noclip (Xuyên Tường)", Settings.Noclip, function(v) Settings.Noclip = v end)
+CreateToggle("Nhảy Vô Hạn Không Khí", Settings.InfJump, function(v) Settings.InfJump = v end)
+
+CreateHeader("HIỂN THỊ (VISUAL)")
+CreateToggle("ESP Tên Trứng", Settings.ESP_Enabled, function(v) Settings.ESP_Enabled = v end)
+CreateToggle("ESP Line (Đường thẳng)", Settings.ESP_Line, function(v) Settings.ESP_Line = v end)
+
+-- Thu gọn nút Menu
+local ToggleMenuBtn = Instance.new("TextButton")
+ToggleMenuBtn.Size = UDim2.new(0, 100, 0, 35)
+ToggleMenuBtn.Position = UDim2.new(0, 10, 0, 10)
+ToggleMenuBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleMenuBtn.Text = "Ẩn/Hiện Menu"
+ToggleMenuBtn.TextColor3 = Color3.new(1,1,1)
+ToggleMenuBtn.Parent = UI
+Instance.new("UICorner", ToggleMenuBtn).CornerRadius = UDim.new(0, 6)
+ToggleMenuBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
 -- =========================================
--- LOGIC BẮT TRỨNG VÀ TWEEN ĐỈNH CAO
+-- LÕI XỬ LÝ (LOGIC TỐI ƯU HÓA)
 -- =========================================
-local function AutoDetectBase()
+function AutoDetectBase()
     for _, folderName in ipairs({"Plots", "Ranches", "Bases", "Tycoons"}) do
         local folder = Workspace:FindFirstChild(folderName)
         if folder then
             for _, plot in ipairs(folder:GetChildren()) do
                 local ownerVal = plot:FindFirstChild("Owner", true) or plot:FindFirstChild("Player", true)
-                if ownerVal and ((ownerVal:IsA("ObjectValue") and ownerVal.Value == LocalPlayer) or 
-                   (ownerVal:IsA("StringValue") and (ownerVal.Value == LocalPlayer.Name))) then
+                if ownerVal and (ownerVal.Value == LocalPlayer or ownerVal.Value == LocalPlayer.Name) then
                     local dest = plot:FindFirstChild("Floor", true) or plot:FindFirstChildWhichIsA("BasePart", true)
                     if dest then return dest.Position end
                 end
@@ -171,24 +207,11 @@ local function AutoDetectBase()
     return Vector3.new(0, 50, 0) 
 end
 
-local function GetVolcanicSafePos(eggPos, targetObj)
-    local rayOrigin = Vector3.new(eggPos.X, 3000, eggPos.Z)
-    local rayDirection = Vector3.new(0, -4000, 0)
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetObj}
-    
-    local result = Workspace:Raycast(rayOrigin, rayDirection, rayParams)
-    if result then return result.Position + Vector3.new(0, 15, 0) end
-    return eggPos + Vector3.new(0, 200, 0) 
-end
-
 local CurrentTween = nil
-local function FastTween(targetCFrame)
+function FastTween(targetCFrame)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
     local dist = (hrp.Position - targetCFrame.Position).Magnitude
     local timeToTravel = dist / Settings.FlySpeed
     if timeToTravel < 0.02 then timeToTravel = 0.02 end 
@@ -199,7 +222,7 @@ local function FastTween(targetCFrame)
     CurrentTween.Completed:Wait()
 end
 
-local function FastInteract(eggModel)
+function FastInteract(eggModel)
     local prompt = eggModel:FindFirstChildWhichIsA("ProximityPrompt", true)
     if prompt then
         prompt.RequiresLineOfSight = false
@@ -215,138 +238,38 @@ local function FastInteract(eggModel)
     end
 end
 
--- =========================================
--- RAYFIELD UI V14 (CUSTOM INPUT MODE)
--- =========================================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Window = Rayfield:CreateWindow({
-   Name = "⚡ VIP Egg Hunter [V14 MAX]",
-   LoadingTitle = "CUSTOM INPUT INJECTING...",
-   LoadingSubtitle = "By V14 God Mode",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false
-})
-
-local TabFarm = Window:CreateTab("🥚 Auto Farm", 4483362458)
-local TabBuff = Window:CreateTab("💪 Sức Mạnh", 4483362458)
-local TabVisual = Window:CreateTab("👁️ ESP Line", 4483362458)
-
--- TAB FARM
-TabFarm:CreateToggle({
-    Name = "✅ Farm Tất Cả Trứng (Ưu tiên Volcanic)",
-    CurrentValue = Settings.FarmAll,
-    Callback = function(v) Settings.FarmAll = v; SaveSettings() end,
-})
-
--- THAY THANH KÉO TỐC ĐỘ BAY BẰNG Ô NHẬP SỐ
-TabFarm:CreateInput({
-    Name = "🚀 Nhập Tốc Độ Bay Farm",
-    PlaceholderText = tostring(Settings.FlySpeed),
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        local value = tonumber(Text)
-        if value then 
-            Settings.FlySpeed = value
-            SaveSettings() 
+-- Vòng lặp sức mạnh
+RunService.Stepped:Connect(function()
+    if Settings.Noclip and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
         end
-    end,
-})
+    end
+end)
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if Settings.SpeedBuff then hum.WalkSpeed = Settings.SpeedValue end
+        if Settings.JumpBuff then hum.UseJumpPower = true hum.JumpPower = Settings.JumpValue end
+    end
+end)
+UserInputService.JumpRequest:Connect(function()
+    if Settings.InfJump and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
 
-TabFarm:CreateToggle({
-    Name = "🔄 AUTO HOP SERVER (Fix Kẹt)",
-    CurrentValue = Settings.AutoHop,
-    Callback = function(v) Settings.AutoHop = v; SaveSettings() end,
-})
-
-local FarmToggle
-FarmToggle = TabFarm:CreateToggle({
-    Name = "▶ BẬT CỖ MÁY CÀY TRỨNG",
-    CurrentValue = Settings.AutoFarm,
-    Callback = function(v)
-        Settings.AutoFarm = v; SaveSettings()
-        if v then CustomBasePos = AutoDetectBase() end
-    end,
-})
-
--- TAB SỨC MẠNH
-TabBuff:CreateToggle({
-    Name = "👻 Noclip (Xuyên Mọi Địa Hình)",
-    CurrentValue = Settings.Noclip,
-    Callback = function(v) Settings.Noclip = v; SaveSettings() end,
-})
-TabBuff:CreateToggle({
-    Name = "🏃 Bật Buff Tốc Độ",
-    CurrentValue = Settings.SpeedBuff,
-    Callback = function(v) Settings.SpeedBuff = v; SaveSettings() end,
-})
-
--- THAY THANH KÉO TỐC ĐỘ CHẠY BẰNG Ô NHẬP SỐ
-TabBuff:CreateInput({
-    Name = "⚡ Nhập Số Tốc Độ Chạy (Speed)",
-    PlaceholderText = tostring(Settings.SpeedValue),
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        local value = tonumber(Text)
-        if value then 
-            Settings.SpeedValue = value
-            SaveSettings() 
-        end
-    end,
-})
-
-TabBuff:CreateToggle({
-    Name = "🦘 Bật Buff Nhảy Cao",
-    CurrentValue = Settings.JumpBuff,
-    Callback = function(v) Settings.JumpBuff = v; SaveSettings() end,
-})
-
--- THAY THANH KÉO LỰC NHẢY BẰNG Ô NHẬP SỐ
-TabBuff:CreateInput({
-    Name = "⬆️ Nhập Số Lực Nhảy (Jump Power)",
-    PlaceholderText = tostring(Settings.JumpValue),
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        local value = tonumber(Text)
-        if value then 
-            Settings.JumpValue = value
-            SaveSettings() 
-        end
-    end,
-})
-
-TabBuff:CreateToggle({
-    Name = "🚀 Infinity Jump (Nhảy vô hạn trên không)",
-    CurrentValue = Settings.InfJump,
-    Callback = function(v) Settings.InfJump = v; SaveSettings() end,
-})
-
--- TAB VISUAL
-TabVisual:CreateToggle({
-    Name = "✅ ESP Chữ",
-    CurrentValue = Settings.ESP_Enabled,
-    Callback = function(v) Settings.ESP_Enabled = v; SaveSettings() end,
-})
-TabVisual:CreateToggle({
-    Name = "📏 Bật ESP Line (Kẻ Chỉ Gần Nhất)",
-    CurrentValue = Settings.ESP_Line,
-    Callback = function(v) Settings.ESP_Line = v; SaveSettings() end,
-})
-
--- =========================================
--- FARMING CORE
--- =========================================
+-- CORE FARMING (TELEPORT ĐI -> TWEEN VỀ)
 task.spawn(function()
-    task.wait(1.5)
-    if Settings.AutoFarm and not CustomBasePos then CustomBasePos = AutoDetectBase() end
-
     while task.wait(0.1) do 
         if Settings.AutoFarm and CustomBasePos then
             local targetObj = nil
             local targetName = ""
             
             for _, pEgg in ipairs(PriorityOrder) do
-                local canFarmThis = Settings.FarmAll or table.find(Settings.SelectedEggs, pEgg)
-                if canFarmThis then
+                if Settings.FarmAll or table.find(Settings.SelectedEggs, pEgg) then
                     for obj, data in pairs(ESP_Cache) do
                         if data.Name == pEgg and obj and obj.Parent then
                             targetObj = obj; targetName = pEgg; break
@@ -363,37 +286,30 @@ task.spawn(function()
                     local eggPos = targetObj:IsA("Model") and (targetObj.PrimaryPart and targetObj.PrimaryPart.Position or targetObj:GetPivot().Position) or targetObj:IsA("BasePart") and targetObj.Position
                     
                     if eggPos then
-                        if targetName == "Volcanic Egg" then
-                            local skyPos = GetVolcanicSafePos(eggPos, targetObj)
-                            hrp.CFrame = CFrame.new(skyPos) 
-                            task.wait(0.1)
-                            FastTween(CFrame.new(eggPos + Vector3.new(0, 2, 0)))
-                        else
-                            FastTween(CFrame.new(eggPos + Vector3.new(0, 2, 0)))
-                        end
-
+                        -- 1. TELEPORT NGAY LẬP TỨC ĐẾN TRỨNG (Không dùng Tween)
+                        hrp.CFrame = CFrame.new(eggPos + Vector3.new(0, 2.5, 0))
+                        task.wait(0.15) -- Nghỉ nhẹ để game nhận diện vị trí
+                        
+                        -- 2. NHẶT TRỨNG
                         FastInteract(targetObj) 
+                        task.wait(0.05)
+                        
+                        -- 3. TWEEN (BAY) VỀ BASE
                         FastTween(CFrame.new(CustomBasePos + Vector3.new(0, 5, 0)))
                         
                         if Settings.AutoHop then
-                            Rayfield:Notify({Title = "AUTO HOP", Content = "Đang chuyển Server siêu tốc...", Duration = 1.5})
-                            task.wait(1)
-                            HopServer()
+                            local TS = game:GetService("TeleportService")
+                            TS:Teleport(game.PlaceId, LocalPlayer)
                         end
                     end
                 end
-            elseif Settings.AutoHop then
-                HopServer()
             end
         end
     end
 end)
 
--- =========================================
--- HỆ THỐNG ESP (TÍCH HỢP LINE CHUYÊN NGHIỆP)
--- =========================================
+-- HỆ THỐNG ESP (Line & Text)
 local HasDrawing = Drawing ~= nil
-
 function CheckAndAddESP(object)
     local current = object.Parent
     while current and current ~= Workspace do
@@ -411,7 +327,7 @@ function CheckAndAddESP(object)
             billboard.Size = UDim2.new(0, 200, 0, 50) 
             billboard.StudsOffset = Vector3.new(0, 3, 0)
             billboard.AlwaysOnTop = true
-            billboard.Parent = SafeGui
+            billboard.Parent = UI
 
             local label = Instance.new("TextLabel", billboard)
             label.Size = UDim2.new(1, 0, 1, 0)
@@ -420,7 +336,6 @@ function CheckAndAddESP(object)
             label.TextStrokeTransparency = 1
             label.Font = Enum.Font.SourceSansBold
             label.TextSize = 16
-
             ESP_Cache[object].Billboard = billboard
             ESP_Cache[object].Label = label
             
@@ -449,7 +364,6 @@ for _, des in ipairs(Workspace:GetDescendants()) do CheckAndAddESP(des) end
 
 RunService.RenderStepped:Connect(function()
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    
     for object, data in pairs(ESP_Cache) do
         if not object or not object.Parent then continue end
         local ePos = object:IsA("Model") and (object.PrimaryPart and object.PrimaryPart.Position or object:GetPivot().Position) or object:IsA("BasePart") and object.Position
